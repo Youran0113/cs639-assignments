@@ -1,0 +1,4 @@
+# Ignore experiment outputs
+hw1/9085950641/
+*.txt
+*.log
