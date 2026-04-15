@@ -57,7 +57,9 @@ class BertSentClassifier(torch.nn.Module):
         # classification
         logits = self.classifier(cls_output)
 
-        return logits
+        log_probs = F.log_softmax(logits, dim=-1)
+
+        return log_probs
 
 # create a custom Dataset Class to be used for the dataloader
 class BertDataset(Dataset):
