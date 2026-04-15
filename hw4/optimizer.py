@@ -74,6 +74,6 @@ class AdamW(Optimizer):
                 # Add weight decay after the main gradient-based updates.
                 # Please note that the learning rate should be incorporated into this update.
                 if weight_decay != 0:
-                    p.data.mul_(1 - alpha * weight_decay)
+                    p.data.add_(p.data, alpha=-alpha * weight_decay)
 
         return loss
