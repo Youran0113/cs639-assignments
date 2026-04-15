@@ -161,7 +161,7 @@ def save_model(model, optimizer, args, config, filepath):
     save_info = {
         'model': model.state_dict(),
         'optim': optimizer.state_dict(),
-        #'args': args,
+        'args': args,
         'model_config': config,
         'system_rng': random.getstate(),
         'numpy_rng': np.random.get_state(),
@@ -254,7 +254,7 @@ def train(args):
 def test(args):
     with torch.no_grad():
         device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
-        saved = torch.load(args.filepath)
+        saved = torch.load(args.filepath, weights_only=False)
         config = saved['model_config']
         model = BertSentClassifier(config)
         model.load_state_dict(saved['model'])
