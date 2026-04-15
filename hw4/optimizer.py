@@ -49,10 +49,9 @@ class AdamW(Optimizer):
 
                 # Access hyperparameters from the `group` dictionary
                 alpha = group["lr"]
-                beta1 = group.get("beta1", 0.9)
-                beta2 = group.get("beta2", 0.999)
-                eps = group.get("eps", 1e-8)
-                weight_decay = group.get("weight_decay", 0.0)
+                beta1, beta2 = group["betas"]
+                eps = group["eps"]
+                weight_decay = 0.01
                 
                 state["step"] += 1
                 t = state["step"]
