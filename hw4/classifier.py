@@ -48,22 +48,14 @@ class BertSentClassifier(torch.nn.Module):
         # [bs, seq_len, hidden]
         sequence_output = outputs["last_hidden_state"]
 
-        # convert attention mask to float for weighting
-        mask = attention_mask.unsqueeze(-1).type_as(sequence_output)  # [bs, seq_len, 1]
-
-        # masked sum over tokens
-        summed = torch.sum(sequence_output * mask, dim=1)  # [bs, hidden]
-
-        # avoid division by zero
-        lengths = torch.clamp(mask.sum(dim=1), min=1e-9)
-
-        mean_pooled = summed / lengths
+        # take CLS token
+        cls_output = sequence_output[:, 0, :]
 
         # dropout
-        mean_pooled = self.dropout(mean_pooled)
+        cls_output = self.dropout(cls_output)
 
         # classification
-        logits = self.classifier(mean_pooled)
+        logits = self.classifier(cls_output)
 
         log_probs = F.log_softmax(logits, dim=-1)
 
