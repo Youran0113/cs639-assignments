@@ -52,6 +52,7 @@ class AdamW(Optimizer):
                 beta1, beta2 = group["betas"]
                 eps = group["eps"]
                 weight_decay = group["weight_decay"]
+                correct_bias = group["correct_bias"]
                 
                 state["step"] += 1
                 t = state["step"]
@@ -64,8 +65,9 @@ class AdamW(Optimizer):
                 # Bias correction
                 # Please note that we are using the "efficient version" given in
                 # https://arxiv.org/abs/1412.6980
-                m_hat = m / (1 - beta1 ** t)
-                v_hat = v / (1 - beta2 ** t)
+                if correct_bias:
+                    m_hat = m / (1 - beta1 ** t)
+                    v_hat = v / (1 - beta2 ** t)
 
 
                 # Update parameters
@@ -74,6 +76,6 @@ class AdamW(Optimizer):
                 # Add weight decay after the main gradient-based updates.
                 # Please note that the learning rate should be incorporated into this update.
                 if weight_decay != 0:
-                    p.data.add_(p.data, alpha=-alpha * weight_decay)
+                    p.data.mul_(1 - alpha * weight_decay)
 
         return loss
