@@ -44,7 +44,7 @@ class BertSelfAttention(nn.Module):
     scores = torch.matmul(query, key.transpose(-1, -2))
     dk = query.size(-1)
     scores = scores / math.sqrt(dk)
-    print("mask sample:", attention_mask[0,0,0,:10])
+    #print("mask sample:", attention_mask[0,0,0,:10])
     scores = scores + attention_mask
 
     # normalize the scores
