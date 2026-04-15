@@ -37,13 +37,27 @@ class BertSentClassifier(torch.nn.Module):
             elif config.option == 'finetune':
                 param.requires_grad = True
 
-        # todo
-        raise NotImplementedError
+        # classification head
+        self.dropout = torch.nn.Dropout(config.hidden_dropout_prob)
+        self.classifier = torch.nn.Linear(config.hidden_size, config.num_labels)
 
     def forward(self, input_ids, attention_mask):
-        # todo
         # the final bert contextualize embedding is the hidden state of [CLS] token (the first token)
-        raise NotImplementedError
+        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+
+        # [bs, seq_len, hidden]
+        sequence_output = outputs["last_hidden_state"]
+
+        # take CLS token
+        cls_output = sequence_output[:, 0, :]
+
+        # dropout
+        cls_output = self.dropout(cls_output)
+
+        # classification
+        logits = self.classifier(cls_output)
+
+        return logits
 
 # create a custom Dataset Class to be used for the dataloader
 class BertDataset(Dataset):
@@ -190,10 +204,13 @@ def train(args):
 
     ## run for the specified number of epochs
     for epoch in range(args.epochs):
+        print(f"\n===== Epoch {epoch} START =====")
         model.train()
         train_loss = 0
         num_batches = 0
         for step, batch in enumerate(tqdm(train_dataloader, desc=f'train-{epoch}', disable=TQDM_DISABLE)):
+            if step % 50 == 0:
+                print(f"Epoch {epoch} | Step {step} | running...")
             b_ids, b_type_ids, b_mask, b_labels, b_sents = batch[0]['token_ids'], batch[0]['token_type_ids'], batch[0][
                 'attention_mask'], batch[0]['labels'], batch[0]['sents']
 
