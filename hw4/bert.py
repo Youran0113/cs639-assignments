@@ -45,6 +45,9 @@ class BertSelfAttention(nn.Module):
     dk = query.size(-1)
     scores = scores / math.sqrt(dk)
     #print("mask sample:", attention_mask[0,0,0,:10])
+
+    attention_mask = (1.0 - attention_mask) * -1e9
+    
     scores = scores + attention_mask
 
     # normalize the scores
