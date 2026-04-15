@@ -51,7 +51,7 @@ class AdamW(Optimizer):
                 alpha = group["lr"]
                 beta1, beta2 = group["betas"]
                 eps = group["eps"]
-                weight_decay = 0.01
+                weight_decay = group["weight_decay"]
                 
                 state["step"] += 1
                 t = state["step"]
@@ -74,6 +74,6 @@ class AdamW(Optimizer):
                 # Add weight decay after the main gradient-based updates.
                 # Please note that the learning rate should be incorporated into this update.
                 if weight_decay != 0:
-                    p.data.add_(p.data, alpha=-group["lr"] * weight_decay)
+                    p.data.mul_(1 - alpha * weight_decay)
 
         return loss
