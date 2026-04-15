@@ -220,6 +220,11 @@ def train(args):
             b_mask = b_mask.to(device)
             b_labels = b_labels.to(device)
 
+            if step % 50 == 0:
+                print("mask unique:", torch.unique(b_mask))
+                print("mask sum:", b_mask.sum().item())
+                print("mask shape:", b_mask.shape)
+
             optimizer.zero_grad()
             logits = model(b_ids, b_mask)
             loss = F.nll_loss(logits, b_labels.view(-1), reduction='sum') / args.batch_size
