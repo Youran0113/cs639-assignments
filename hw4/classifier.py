@@ -60,6 +60,13 @@ class BertSentClassifier(torch.nn.Module):
         log_probs = F.log_softmax(logits, dim=-1)
 
         return log_probs
+    
+    def forward_from_embeddings(self, embeddings, attention_mask):
+        sequence_output = self.bert.encode(embeddings, attention_mask)
+        cls_output = sequence_output[:, 0, :]
+        cls_output = self.dropout(cls_output)
+        logits = self.classifier(cls_output)
+        return F.log_softmax(logits, dim=-1)
 
 # create a custom Dataset Class to be used for the dataloader
 class BertDataset(Dataset):
@@ -343,12 +350,6 @@ def train(args):
 
         print(f"epoch {epoch}: train loss :: {train_loss:.3f}, train acc :: {train_acc:.3f}, dev acc :: {dev_acc:.3f}")
 
-def forward_from_embeddings(self, embeddings, attention_mask):
-    sequence_output = self.bert.encode(embeddings, attention_mask)
-    cls_output = sequence_output[:, 0, :]
-    cls_output = self.dropout(cls_output)
-    logits = self.classifier(cls_output)
-    return F.log_softmax(logits, dim=-1)
 
 def test(args):
     with torch.no_grad():
