@@ -65,17 +65,23 @@ class AdamW(Optimizer):
                 # Bias correction
                 # Please note that we are using the "efficient version" given in
                 # https://arxiv.org/abs/1412.6980
+                # Bias correction
                 if correct_bias:
                     m_hat = m / (1 - beta1 ** t)
                     v_hat = v / (1 - beta2 ** t)
+                else:
+                    m_hat = m
+                    v_hat = v
 
+                # Parameter update (core Adam step)
+                p.data.addcdiv_(
+                    m_hat,
+                    v_hat.sqrt().add(eps),
+                    value=-alpha
+                )
 
-                # Update parameters
-                p.data.addcdiv_(m_hat, (v_hat.sqrt() + eps), value=-alpha)
-
-                # Add weight decay after the main gradient-based updates.
-                # Please note that the learning rate should be incorporated into this update.
+                # Decoupled weight decay (correct AdamW form)
                 if weight_decay != 0:
-                    p.data.mul_(1 - alpha * weight_decay)
+                    p.data.add_(p.data, alpha=-alpha * weight_decay)
 
         return loss

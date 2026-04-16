@@ -46,7 +46,6 @@ class BertSelfAttention(nn.Module):
     scores = scores / math.sqrt(dk)
     
 
-    attention_mask = (1.0 - attention_mask) * -1e9
 
     scores = scores + attention_mask
 
