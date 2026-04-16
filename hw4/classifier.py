@@ -171,6 +171,7 @@ def save_model(model, optimizer, args, config, filepath):
     torch.save(save_info, filepath)
     print(f"save the model to {filepath}")
 
+'''
 def train(args):
     device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
     #### Load data
@@ -219,15 +220,15 @@ def train(args):
             b_ids = b_ids.to(device)
             b_mask = b_mask.to(device)
             b_labels = b_labels.to(device)
-            '''
-            if step % 50 == 0:
-                print("mask unique:", torch.unique(b_mask))
-                print("mask sum:", b_mask.sum().item())
-                print("mask shape:", b_mask.shape)
-            '''
+
             optimizer.zero_grad()
+
+
+
             logits = model(b_ids, b_mask)
             loss = F.nll_loss(logits, b_labels.view(-1), reduction='sum') / args.batch_size
+
+
 
             loss.backward()
 
@@ -249,7 +250,98 @@ def train(args):
             save_model(model, optimizer, args, config, args.filepath)
 
         print(f"epoch {epoch}: train loss :: {train_loss :.3f}, train acc :: {train_acc :.3f}, dev acc :: {dev_acc :.3f}")
+'''
 
+def train(args):
+    device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
+
+    train_data, num_labels = create_data(args.train, 'train')
+    dev_data = create_data(args.dev, 'valid')
+
+    train_dataset = BertDataset(train_data, args)
+    dev_dataset = BertDataset(dev_data, args)
+
+    train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=args.batch_size,
+                                  collate_fn=train_dataset.collate_fn)
+    dev_dataloader = DataLoader(dev_dataset, shuffle=False, batch_size=args.batch_size,
+                                collate_fn=dev_dataset.collate_fn)
+
+    config = {
+        'hidden_dropout_prob': args.hidden_dropout_prob,
+        'num_labels': num_labels,
+        'hidden_size': 768,
+        'data_dir': '.',
+        'option': args.option
+    }
+    config = SimpleNamespace(**config)
+
+    model = BertSentClassifier(config).to(device)
+    optimizer = AdamW(model.parameters(), lr=args.lr)
+
+    best_dev_acc = 0
+    lambda_smart = 0.5
+    noise_std = 1e-5
+
+    for epoch in range(args.epochs):
+        print(f"\n===== Epoch {epoch} START =====")
+        model.train()
+
+        train_loss = 0
+        num_batches = 0
+
+        for step, batch in enumerate(tqdm(train_dataloader, desc=f'train-{epoch}', disable=TQDM_DISABLE)):
+
+            b_ids = batch[0]['token_ids'].to(device)
+            b_mask = batch[0]['attention_mask'].to(device)
+            b_labels = batch[0]['labels'].to(device)
+
+            optimizer.zero_grad()
+
+            # ===== 1. NORMAL FORWARD =====
+            log_probs = model(b_ids, b_mask)
+            task_loss = F.nll_loss(log_probs, b_labels.view(-1), reduction='mean')
+
+            # ===== 2. EMBEDDING + NOISE =====
+            embeddings = model.bert.embed(b_ids)
+            noise = torch.randn_like(embeddings) * noise_std
+            embeddings_perturbed = embeddings + noise
+
+            # ===== 3. PERTURBED FORWARD =====
+            log_probs_perturbed = model.forward_from_embeddings(
+                embeddings_perturbed, b_mask
+            )
+
+            # ===== 4. SMART LOSS (KL) =====
+            p = log_probs.exp()
+            q = log_probs_perturbed.exp()
+
+            consistency_loss = F.kl_div(
+                log_probs_perturbed,
+                p,
+                reduction='batchmean'
+            )
+
+            # ===== 5. FINAL LOSS =====
+            loss = task_loss + lambda_smart * consistency_loss
+
+            loss.backward()
+
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optimizer.step()
+
+            train_loss += loss.item()
+            num_batches += 1
+
+        train_loss /= num_batches
+
+        train_acc, train_f1, *_ = model_eval(train_dataloader, model, device)
+        dev_acc, dev_f1, *_ = model_eval(dev_dataloader, model, device)
+
+        if dev_acc > best_dev_acc:
+            best_dev_acc = dev_acc
+            save_model(model, optimizer, args, config, args.filepath)
+
+        print(f"epoch {epoch}: train loss :: {train_loss:.3f}, train acc :: {train_acc:.3f}, dev acc :: {dev_acc:.3f}")
 
 def test(args):
     with torch.no_grad():
